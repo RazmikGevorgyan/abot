@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -17,16 +18,22 @@ namespace Abot2.Core
 
     public class WebContentExtractor : IWebContentExtractor
     {
-        public virtual async Task<PageContent> GetContentAsync(HttpResponseMessage response)
+           public virtual async Task<PageContent> GetContentAsync(HttpResponseMessage response)
         {
             var pageContent = new PageContent
             {
                 Bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false),
-                Text = await response.Content.ReadAsStringAsync().ConfigureAwait(false)
             };
+            var contentText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-            pageContent.Charset = GetCharset(response.Content.Headers, pageContent.Text);
+            pageContent.Charset = GetCharset(response.Content.Headers, contentText);
             pageContent.Encoding = GetEncoding(pageContent.Charset);
+
+            var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using (var sr = new StreamReader(contentStream, pageContent.Encoding))
+            {
+                pageContent.Text = sr.ReadToEnd();
+            }
 
             return pageContent;
 
